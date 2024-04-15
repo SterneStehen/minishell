@@ -1,28 +1,62 @@
-#include "minishell.h"
+#include "../inc/minishell.h"
 
-
-
-void parse_input(char *input, t_command *command) {
-    char **commands;
-    char **args;
-    const char command_delimiter = ';';
-    const char arg_delimiter = ' ';
-
-    //free_command(command); // Очищаем команду перед использованием
-
-    commands = ft_split(input, command_delimiter);
-    if (commands[0] != NULL) 
+int parse_input(char *input, t_command **commands) 
+{
+    if (input == NULL) 
 	{
-        args = ft_split(commands[0], arg_delimiter);
-        command->cmd = ft_strdup(args[0]); // Сохраняем имя команды
-        command->args = args; // args уже является NULL-terminated массивом, который можно использовать напрямую
-
-        // Важно: команда должна быть освобождена после использования, включая command->cmd и каждый элемент command->args
-    } else 
-	{
-        command->cmd = NULL;
-        command->args = NULL;
+        *commands = NULL;
+        return 0;
     }
-    
-    ft_free_array(commands); // Освобождаем массив команд, так как он больше не нужен
+
+    char **command_strings = ft_split(input, ';');
+    if (command_strings == NULL) 
+	{
+        *commands = NULL;
+        return 0;
+    }
+
+    int num_commands = 0;
+    while (command_strings[num_commands] != NULL) 
+	{
+        num_commands++;
+    }
+
+    *commands = malloc(sizeof(t_command) * num_commands);
+    if (*commands == NULL) 
+	{
+        ft_free_array(command_strings);
+        return 0;
+    }
+
+    int executed_commands = 0;
+    for (int i = 0; i < num_commands; i++)
+	{
+        char *trimmed_command = ft_strtrim(command_strings[i], " ");
+        if (trimmed_command == NULL) 
+		{
+            continue;
+        }
+        char **args = ft_split(trimmed_command, ' ');
+        free(trimmed_command);
+        if (args == NULL)
+		{
+            continue;
+        }
+
+        t_command command;
+        command.cmd = ft_strdup(args[0]);
+        command.args = args;
+
+        execute_command(&command);
+
+        free(command.cmd);
+        ft_free_array(args);
+
+        executed_commands++;
+    }
+
+    ft_free_array(command_strings);
+    free(*commands);
+    *commands = NULL;
+    return (executed_commands);
 }

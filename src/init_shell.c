@@ -1,6 +1,5 @@
-#include "minishell.h"
+#include "../inc/minishell.h"
 
-// Функция для подсчёта количества переменных окружения
 int count_envp(char **envp)
 {
     int count = 0;
@@ -16,34 +15,31 @@ t_command *init_command(char **envp)
     int env_count = count_envp(envp);
     t_command *command = malloc(sizeof(t_command));
     if (!command) {
-        perror("Ошибка выделения памяти для команды");
+        perror("Error memory");
         exit(EXIT_FAILURE);
     }
 
-    // Инициализация полей команды
-    command->cmd = NULL;  // Пока что нет команды
-    command->args = NULL; // Пока что нет аргументов
+    command->cmd = NULL;
+    command->args = NULL;
 
-    // Выделение памяти для копии переменных окружения
     command->envp = malloc((env_count + 1) * sizeof(char *));
     if (!command->envp) {
-        perror("Ошибка выделения памяти для переменных окружения");
+        perror("Error memory");
         free(command);
         exit(EXIT_FAILURE);
     }
 
-    // Копирование переменных окружения
     for (int i = 0; i < env_count; i++) {
         command->envp[i] = strdup(envp[i]);
         if (!command->envp[i]) {
-            perror("Ошибка копирования переменной окружения");
-            while (i--) free(command->envp[i]); // Освобождение ранее выделенной памяти
+            perror("Error memory");
+            while (i--) free(command->envp[i]);
             free(command->envp);
             free(command);
             exit(EXIT_FAILURE);
         }
     }
-    command->envp[env_count] = NULL; // NULL-терминатор для массива переменных окружения
+    command->envp[env_count] = NULL;
 
     return command;
 }
