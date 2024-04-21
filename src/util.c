@@ -1,34 +1,37 @@
 #include "../inc/minishell.h"
 
-void ft_free_array(char **arr)
+void ft_free_array(char **arr) 
 {
-    if (arr != NULL)
+    if (arr != NULL) 
 	{
         int i = 0;
-        while (arr[i] != NULL)
+        while (arr[i] != NULL) 
 		{
-            free(arr[i]);
+            free(arr[i]);  // освобождаем каждую строку в массиве
             i++;
         }
-        free(arr);
+        free(arr);  // освобождаем сам массив
     }
+	//arr = NULL;
 }
-
-
 
 void free_command(t_command *command) 
 {
     if (command != NULL) {
-        if (command->cmd != NULL) 
-		{
+        if (command->cmd != NULL) {
             free(command->cmd);
+            command->cmd = NULL;
         }
-        if (command->args != NULL)
-		{
-            ft_free_array(command->args);
+        if (command->envp != NULL) {
+            free(command->envp);
+            command->envp = NULL;
         }
+        free(command);
+        command = NULL;
     }
 }
+
+
 
 
 

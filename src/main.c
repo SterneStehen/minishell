@@ -25,27 +25,40 @@ void setup_signals()
     sigaction(SIGINT, &sa, NULL);
 }
 
-int main() 
-{
-    char *input;
-    t_command *stack = NULL;
 
-    while (g_keep_running) 
-	{
+int main(int ac, char **av, char **envv) {
+    char *input;
+    t_command *command = NULL;
+
+    // Инициализация команды с аргументами командной строки и переменными окружения
+    init_command(&command, ac, av, envv);
+
+    while (g_keep_running) {
         input = readline("minishell> ");
-        if (!input) 
-		{
+        if (!input) {
             write(STDOUT_FILENO, "exit\n", 5);
             break;
         }
-        if (input && *input) 
-		{
-    		add_history(input);
-		}
-		parse_input(input, &stack);
-        free(input);
-        stack = NULL;
+        if (*input) {
+            add_history(input);
+        }
+
+        parse_input(input, command);
+        execute_command(command);
+        free(input); // Освобождаем введенную строку после использования
+
+        // Не нужно освобождать command каждый раз в цикле, если оно используется повторно
     }
-	rl_clear_history();
+
+    // Очистка истории перед выходом
+    rl_clear_history();
+    
+    // Освобождение ресурсов команды в конце работы
+    if (command) {
+        free_command(command); // Эта функция должна также освободить command->envp
+        free(command); // Освобождение структуры command
+        command = NULL;
+    }
+
     return 0;
 }

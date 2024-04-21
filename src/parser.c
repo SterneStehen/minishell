@@ -1,62 +1,82 @@
 #include "../inc/minishell.h"
 
-int parse_input(char *input, t_command **commands) 
+int ft_audit_input(char *str)
 {
-    if (input == NULL) 
-	{
-        *commands = NULL;
-        return 0;
-    }
+	int i;
+	i = 0;
+	bool flag = true;
+	
 
-    char **command_strings = ft_split(input, ';');
-    if (command_strings == NULL) 
+	while (str[i])
 	{
-        *commands = NULL;
-        return 0;
-    }
-
-    int num_commands = 0;
-    while (command_strings[num_commands] != NULL) 
-	{
-        num_commands++;
-    }
-
-    *commands = malloc(sizeof(t_command) * num_commands);
-    if (*commands == NULL) 
-	{
-        ft_free_array(command_strings);
-        return 0;
-    }
-
-    int executed_commands = 0;
-    for (int i = 0; i < num_commands; i++)
-	{
-        char *trimmed_command = ft_strtrim(command_strings[i], " ");
-        if (trimmed_command == NULL) 
+		if (str[i] == '\\')
 		{
-            continue;
-        }
-        char **args = ft_split(trimmed_command, ' ');
-        free(trimmed_command);
-        if (args == NULL)
+			printf ("%s", "error input. Try again");
+			return 1;
+		}
+		if (str[i] == ';')
 		{
-            continue;
-        }
+			printf ("%s", "error input. Try again");
+			return 1;
+		}
+		if (str[i] == '"')
+		{
+			flag = !flag;
+		}
+		i++;
+	}
+	if (flag == true)
+		return 0;
+	else
+		return 1;
+}
 
-        t_command command;
-        command.cmd = ft_strdup(args[0]);
-        command.args = args;
 
-        execute_command(&command);
 
-        free(command.cmd);
-        ft_free_array(args);
+// Разбирает команду из ввода
+void parse_command(char *input, t_command *command) 
+{
+    command->cmd = ft_split(input, ' ');
+}
 
-        executed_commands++;
+// Копирует текущие переменные окружения
+void copy_environment(t_command *command) 
+{
+    char **new_envp;
+    int i = 0;
+
+    if (command->envp == NULL) return; // Нет данных для копирования
+
+    // Подсчитываем количество переменных окружения
+    while (command->envp[i] != NULL) {
+        i++;
     }
 
-    ft_free_array(command_strings);
-    free(*commands);
-    *commands = NULL;
-    return (executed_commands);
+    // Выделяем память для копии переменных окружения
+    new_envp = malloc((i + 1) * sizeof(char *));
+    if (new_envp == NULL) {
+        perror("Failed to allocate memory for new envp");
+        exit(EXIT_FAILURE);
+    }
+
+    for (int j = 0; j < i; j++) {
+        new_envp[j] = strdup(command->envp[j]);  // Копирование каждой переменной окружения
+        if (new_envp[j] == NULL) {
+            perror("Failed to duplicate environment variable");
+            exit(EXIT_FAILURE);
+        }
+    }
+    new_envp[i] = NULL;  // NULL-terminated array
+
+    // Освобождаем старый envp и обновляем его на новый
+    ft_free_array(command->envp);
+    command->envp = new_envp;
+	//ft_free_array(new_envp);
+}
+
+
+void parse_input(char *input, t_command *command) 
+{
+    parse_command(input, command);
+    copy_environment(command);
 }

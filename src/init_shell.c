@@ -1,45 +1,32 @@
 #include "../inc/minishell.h"
-
-int count_envp(char **envp)
+void init_command(t_command **command, int ac, char **av, char **envv) 
 {
-    int count = 0;
-    while (envp[count] != NULL) 
-	{
-        count++;
+    (void)ac;
+	(void)av;
+	*command = malloc(sizeof(t_command));
+    if (*command == NULL) {
+        perror("Failed to allocate memory for command");
+        exit(EXIT_FAILURE);
     }
-    return count;
-}
+    (*command)->cmd = NULL;
+    (*command)->envp = NULL;
 
-t_command *init_command(char **envp) 
-{
-    int env_count = count_envp(envp);
-    t_command *command = malloc(sizeof(t_command));
-    if (!command) {
-        perror("Error memory");
+    // Копируем начальное окружение
+    int i = 0;
+    for (; envv[i] != NULL; i++); // Считаем переменные окружения
+
+    (*command)->envp = malloc((i + 1) * sizeof(char *));
+    if ((*command)->envp == NULL) {
+        perror("Failed to allocate memory for envp");
         exit(EXIT_FAILURE);
     }
 
-    command->cmd = NULL;
-    command->args = NULL;
-
-    command->envp = malloc((env_count + 1) * sizeof(char *));
-    if (!command->envp) {
-        perror("Error memory");
-        free(command);
-        exit(EXIT_FAILURE);
-    }
-
-    for (int i = 0; i < env_count; i++) {
-        command->envp[i] = strdup(envp[i]);
-        if (!command->envp[i]) {
-            perror("Error memory");
-            while (i--) free(command->envp[i]);
-            free(command->envp);
-            free(command);
+    for (int j = 0; j < i; j++) {
+        (*command)->envp[j] = strdup(envv[j]);
+        if ((*command)->envp[j] == NULL) {
+            perror("Failed to duplicate environment variable");
             exit(EXIT_FAILURE);
         }
     }
-    command->envp[env_count] = NULL;
-
-    return command;
+    (*command)->envp[i] = NULL;
 }
