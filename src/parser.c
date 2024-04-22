@@ -31,13 +31,77 @@ int ft_audit_input(char *str)
 		return 1;
 }
 
+char *search_in_path(char *cmd) 
+{
+    if (strchr(cmd, '/') != NULL) 
+	{
+        return strdup(cmd);
+    }
 
+    // Получаем значение переменной PATH
+    char *path_env = getenv("PATH");
+    if (path_env == NULL) {
+        fprintf(stderr, "PATH is not set.\n");
+        return NULL;
+    }
 
-// Разбирает команду из ввода
+    // Создаём копию, так как strtok модифицирует исходную строку
+    char *path = strdup(path_env);
+    char *full_path = NULL;
+    char *dir = strtok(path, ":");
+
+    while (dir != NULL) {
+        // Создаём полный путь до файла
+        full_path = malloc(strlen(dir) + strlen(cmd) + 2); // +1 для '/' и +1 для '\0'
+        if (full_path == NULL) {
+            perror("malloc");
+            break;
+        }
+        sprintf(full_path, "%s/%s", dir, cmd);
+        
+        // Проверяем, существует ли файл
+        if (access(full_path, X_OK) == 0) {
+            free(path);
+            return full_path; // Найденный путь
+        }
+
+        free(full_path); // Освобождаем память, если файл не найден
+        full_path = NULL;
+        dir = strtok(NULL, ":");
+    }
+
+    free(path);
+    return NULL; // Файл не найден в PATH
+}
+
 void parse_command(char *input, t_command *command) 
 {
     command->cmd = ft_split(input, ' ');
+
+    // Первоначально проверяем, является ли команда встроенной
+    if (!include_commands(command)) 
+	{
+        // Если не встроенная, ищем путь в системе
+        char *full_path = search_in_path(command->cmd[0]);
+        if (full_path != NULL) 
+		{
+            command->path = full_path;  // Сохраняем полный путь к исполняемому файлу
+        } 
+		else 
+		{
+            // Если файл не найден и это не встроенная команда
+            printf("Command not found: %s\n", command->cmd[0]);
+            ft_free_array(command->cmd); // Очистка массива аргументов
+            command->cmd = NULL;
+        }
+    }
+	else
+	{
+		free(command->path);
+		command->path = NULL;
+	}
 }
+
 
 // Копирует текущие переменные окружения
 void copy_environment(t_command *command) 

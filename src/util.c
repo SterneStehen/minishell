@@ -14,24 +14,42 @@ void ft_free_array(char **arr)
     }
 	//arr = NULL;
 }
-
-void free_command(t_command *command) 
-{
+void free_command(t_command *command) {
     if (command != NULL) {
-        if (command->cmd != NULL) {
-            free(command->cmd);
+        // Освобождение массива команд
+        if (command->cmd != NULL) 
+		{
+            for (int i = 0; command->cmd[i] != NULL; i++) 
+			{
+                free(command->cmd[i]);  // Освобождаем каждую команду в массиве
+            }
+            free(command->cmd);  // Освобождаем массив команд
             command->cmd = NULL;
         }
-        if (command->envp != NULL) {
-            free(command->envp);
+
+        // Освобождение массива переменных окружения
+        if (command->envp != NULL) 
+		{
+            for (int i = 0; command->envp[i] != NULL; i++) 
+			{
+                free(command->envp[i]);  // Освобождаем каждую переменную окружения
+            }
+            free(command->envp);  // Освобождаем массив переменных окружения
             command->envp = NULL;
         }
+
+        // Освобождение пути, если он есть
+        if (command->path != NULL) 
+		{
+            free(command->path);
+            command->path = NULL;
+        }
+
+        // Наконец, освобождение самой структуры команды
         free(command);
         command = NULL;
     }
 }
-
-
 
 
 

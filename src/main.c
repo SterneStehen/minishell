@@ -30,12 +30,12 @@ int main(int ac, char **av, char **envv) {
     char *input;
     t_command *command = NULL;
 
-    // Инициализация команды с аргументами командной строки и переменными окружения
     init_command(&command, ac, av, envv);
 
     while (g_keep_running) {
         input = readline("minishell> ");
-        if (!input) {
+        if (!input) 
+		{
             write(STDOUT_FILENO, "exit\n", 5);
             break;
         }
@@ -44,17 +44,17 @@ int main(int ac, char **av, char **envv) {
         }
 
         parse_input(input, command);
-        execute_command(command);
-        free(input); // Освобождаем введенную строку после использования
-
-        // Не нужно освобождать command каждый раз в цикле, если оно используется повторно
+        if(command->path != NULL)
+			execute_command(command);
+        free(input);
     }
 
     // Очистка истории перед выходом
     rl_clear_history();
     
     // Освобождение ресурсов команды в конце работы
-    if (command) {
+    if (command) 
+	{
         free_command(command); // Эта функция должна также освободить command->envp
         free(command); // Освобождение структуры command
         command = NULL;

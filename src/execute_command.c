@@ -1,21 +1,23 @@
 #include "../inc/minishell.h"
 
-int handle_builtin_commands(t_command *command) {
-    if (strcmp(command->cmd[0], "cd") == 0) {
+int include_commands(t_command *command) {
+    if (ft_strcmp(command->cmd[0], "cd") == 0) {
         handle_cd(command);
-    } else if (strcmp(command->cmd[0], "echo") == 0) {
+    } else if (ft_strcmp(command->cmd[0], "echo") == 0) {
         handle_echo(command);
-    } else if (strcmp(command->cmd[0], "pwd") == 0) {
+    } else if (ft_strcmp(command->cmd[0], "pwd") == 0) {
         handle_pwd(command);
-    } else if (strcmp(command->cmd[0], "history") == 0) {
+    } else if (ft_strcmp(command->cmd[0], "history") == 0) {
         print_history();
-    } else if (strcmp(command->cmd[0], "export") == 0 || strcmp(command->cmd[0], "unset") == 0) {
-        fprintf(stderr, "minishell: %s not fully implemented\n", command->cmd[0]);
+    } else if (ft_strcmp(command->cmd[0], "export") == 0 || ft_strcmp(command->cmd[0], "unset") == 0) 
+	{
+        printf("minishell: %s not fully implemented\n", command->cmd[0]);
         return 1;
-    } else if (strcmp(command->cmd[0], "env") == 0) {
+    } else if (ft_strcmp(command->cmd[0], "env") == 0) {
         handle_env(command);
-    } else if (strcmp(command->cmd[0], "exit") == 0) {
-        free_exit(command);
+    } else if (ft_strcmp(command->cmd[0], "exit") == 0) {
+        free_exit(command);  // Освобождаем команду перед выходом
+        //exit(0);  // Завершаем шелл
     } else {
         return 0;  // Команда не является встроенной
     }
@@ -30,29 +32,22 @@ void execute_external_command(t_command *command) {
     pid = fork();
     if (pid == 0) {
         // Дочерний процесс: попытка выполнить внешнюю команду
-        if (execve(command->cmd[0], command->cmd, command->envp) == -1) {
+        if (execve(command->path, command->cmd, command->envp) == -1) 
+		{
             perror("minishell: execve error");
             exit(EXIT_FAILURE);
         }
     } else if (pid < 0) {
-        // Ошибка при попытке создания процесса
         perror("minishell: fork error");
     } else {
         // Родительский процесс: ожидание завершения дочернего процесса
-        do {
-            if (waitpid(pid, &status, 0) == -1) {
-                perror("minishell: waitpid error");
-                exit(EXIT_FAILURE);
-            }
-        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
-
-        if (WIFEXITED(status)) {
-            printf("Process exited with status %d\n", WEXITSTATUS(status));
-        } else if (WIFSIGNALED(status)) {
-            printf("Process killed by signal %d\n", WTERMSIG(status));
-        }
+        waitpid(pid, &status, 0);
+    }
+    if (WIFEXITED(status)) {
+        printf("Status %d, Process completed successfully\n", WEXITSTATUS(status));
     }
 }
+
 
 void execute_command(t_command *command) 
 {
@@ -61,7 +56,7 @@ void execute_command(t_command *command)
         return;  // Пустая команда
     }
 
-    if (!handle_builtin_commands(command)) 
+    if (!include_commands(command)) 
 	{
         execute_external_command(command);  // Исполнение внешней команды
     }
