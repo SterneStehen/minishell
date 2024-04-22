@@ -74,35 +74,68 @@ char *search_in_path(char *cmd)
     return NULL; // Файл не найден в PATH
 }
 
-void parse_command(char *input, t_command *command) 
-{
-    command->cmd = ft_split(input, ' ');
+void parse_command(char *input, t_command *command) {
+    bool in_single_quotes = false;
+    bool in_double_quotes = false;
+    char *start = input;
+    int token_length = 0;
+    int token_index = 0;
 
-    // Первоначально проверяем, является ли команда встроенной
-    if (!include_commands(command)) 
-	{
-        // Если не встроенная, ищем путь в системе
-        char *full_path = search_in_path(command->cmd[0]);
-        if (full_path != NULL) 
-		{
-            command->path = full_path;  // Сохраняем полный путь к исполняемому файлу
-        } 
-		else 
-		{
-            // Если файл не найден и это не встроенная команда
-            printf("Command not found: %s\n", command->cmd[0]);
-            ft_free_array(command->cmd); // Очистка массива аргументов
-            command->cmd = NULL;
+    // Выделение памяти для начального количества токенов
+    command->cmd = malloc(sizeof(char *) * (ft_word_count(input, ' ') + 1));
+    if (!command->cmd) return; // Проверка успешного выделения памяти
+
+    for (int i = 0; input[i] != '\0'; i++) {
+        char current_char = input[i];
+
+        if (current_char == '\'' || current_char == '\"') {
+            // Переключение состояния кавычек
+            if (current_char == '\'' && !in_double_quotes) {
+                in_single_quotes = !in_single_quotes;
+            } else if (current_char == '\"' && !in_single_quotes) {
+                in_double_quotes = !in_double_quotes;
+            }
+        } else if (current_char == ' ' && !in_single_quotes && !in_double_quotes) {
+            // Завершаем текущий аргумент
+            if (token_length > 0) {
+                command->cmd[token_index++] = ft_substr(start, 0, token_length);
+                token_length = 0;
+                start = input + i + 1;
+            }
+        } else {
+            token_length++;
         }
     }
-	else
-	{
-		free(command->path);
-		command->path = NULL;
-	}
+
+    // Добавление последнего аргумента
+    if (token_length > 0) {
+        command->cmd[token_index++] = ft_substr(start, 0, token_length);
+    }
+    command->cmd[token_index] = NULL; // NULL-terminated массив
+
+    // Проверка на незакрытые кавычки
+    if (in_single_quotes || in_double_quotes) {
+        printf("Syntax error: unclosed quote\n");
+        ft_free_array(command->cmd);
+        command->cmd = NULL;
+        return;
+    }
+
+    // Обработка команды
+    if (!include_commands(command)) {
+        char *full_path = search_in_path(command->cmd[0]);
+        if (full_path) {
+            command->path = full_path;
+        } else {
+            printf("Command not found: %s\n", command->cmd[0]);
+            ft_free_array(command->cmd);
+            command->cmd = NULL;
+        }
+    } else {
+        free(command->path);
+        command->path = NULL;
+    }
 }
-
-
 // Копирует текущие переменные окружения
 void copy_environment(t_command *command) 
 {
