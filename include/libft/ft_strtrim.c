@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ft_strtrim.c                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: smoreron <7353718@gmail.com>               +#+  +:+       +#+        */
+/*   By: smoreron <smoreron@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/10/23 01:41:00 by smoreron          #+#    #+#             */
-/*   Updated: 2023/10/30 15:45:42 by smoreron         ###   ########.fr       */
+/*   Updated: 2024/05/28 16:56:48 by smoreron         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,7 +23,7 @@ static int	ft_isinset(char const c, char const *set)
 	return (0);
 }
 
-char	*ft_strtrim(char const *s1, char const *set)
+char	*ft_cut(char const *s1, char const *set)
 {
 	char	*res;
 	int		s;

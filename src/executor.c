@@ -1,4 +1,18 @@
-#include "../inc/minishell.h"
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   execute_command.c                                  :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: smoreron <smoreron@student.42heilbronn.    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/05/23 21:19:12 by smoreron          #+#    #+#             */
+/*   Updated: 2024/05/23 21:19:12 by smoreron         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+
+
+#include "../include/minishell.h"
 
 int include_commands(t_command *command) {
     if (ft_strcmp(command->cmd[0], "cd") == 0) {

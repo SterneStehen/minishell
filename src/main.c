@@ -1,64 +1,38 @@
-#include "../inc/minishell.h"
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   main.c                                             :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: smoreron <smoreron@student.42heilbronn.    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/05/28 16:42:32 by smoreron          #+#    #+#             */
+/*   Updated: 2024/05/28 16:42:32 by smoreron         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
-static volatile sig_atomic_t g_keep_running = 1;
+#include "../include/minishell.h"
 
+int main(int argc, char **argv, char **envp) {
+    t_tools tools;
 
-void handle_signal(int signal) 
-{
-    if (signal == SIGINT) 
-	{
-        g_keep_running = 0;
-        write(STDOUT_FILENO, "\n", 1);
-        rl_on_new_line();
-        rl_replace_line("", 0);
-        rl_redisplay();
-    }
-}
+    // Инициализация глобальной переменной
+    g_global.error_num = 0;
+    g_global.stop_heredoc = 0;
+    g_global.in_cmd = 0;
+    g_global.in_heredoc = 0;
 
-void setup_signals() 
-{
-    struct sigaction sa;
+    // Инициализация структуры tools
+    init_tools(&tools, envp);
+    init_signal_handlers();
 
-    sa.sa_handler = &handle_signal;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_RESTART;
-    sigaction(SIGINT, &sa, NULL);
-}
+    // Основной цикл выполнения команд в minishell
+    minishell_loop(&tools);
 
-
-int main(int ac, char **av, char **envv) {
-    char *input;
-    t_command *command = NULL;
-
-    init_command(&command, ac, av, envv);
-
-    while (g_keep_running) {
-        input = readline("minishell> ");
-        if (!input) 
-		{
-            write(STDOUT_FILENO, "exit\n", 5);
-            break;
-        }
-        if (*input) {
-            add_history(input);
-        }
-
-        parse_input(input, command);
-        if(command->path != NULL)
-			execute_command(command);
-        free(input);
-    }
-
-    // Очистка истории перед выходом
-    rl_clear_history();
-    
-    // Освобождение ресурсов команды в конце работы
-    if (command) 
-	{
-        free_command(command); // Эта функция должна также освободить command->envp
-        free(command); // Освобождение структуры command
-        command = NULL;
-    }
+    // Освобождение ресурсов перед выходом
+    free(tools.pwd);
+    free(tools.old_pwd);
+    free_array(tools.envp);
+    free_array(tools.paths);
 
     return 0;
 }
