@@ -14,169 +14,274 @@
 
 #include "../include/minishell.h"
 
-int include_commands(t_command *command) {
-    if (ft_strcmp(command->cmd[0], "cd") == 0) {
-        handle_cd(command);
-    } else if (ft_strcmp(command->cmd[0], "echo") == 0) {
-        handle_echo(command);
-    } else if (ft_strcmp(command->cmd[0], "pwd") == 0) {
-        handle_pwd(command);
-    } else if (ft_strcmp(command->cmd[0], "history") == 0) {
-        print_history();
-    } else if (ft_strcmp(command->cmd[0], "export") == 0 || ft_strcmp(command->cmd[0], "unset") == 0) 
-	{
-        printf("minishell: %s not fully implemented\n", command->cmd[0]);
-        return 1;
-    } else if (ft_strcmp(command->cmd[0], "env") == 0) {
-        handle_env(command);
-    } else if (ft_strcmp(command->cmd[0], "exit") == 0) {
-        free_exit(command);  // Освобождаем команду перед выходом
-        //exit(0);  // Завершаем шелл
-    } else {
-        return 0;  // Команда не является встроенной
-    }
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   executor.c                                         :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: smoreron <smoreron@student.42heilbronn.    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/05/31 11:04:54 by smoreron          #+#    #+#             */
+/*   Updated: 2024/05/31 11:05:15 by smoreron         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
-    return 1;  // Команда была встроенной и обработана
+#include "../include/minishell.h"
+
+
+// Прототипы вспомогательных функций
+void execute_command(t_simple_cmds *cmd, t_tools *tools);
+void handle_redirections(t_simple_cmds *cmd);
+void close_pipes(int pipes[][2], int num_pipes);
+void dup_and_close(int old_fd, int new_fd);
+void expand_environment_variables(t_simple_cmds *cmd, char **envp);
+void create_heredoc(t_simple_cmds *cmd);
+void create_pipes(int pipes[][2], int num_pipes);
+void close_unused_pipes(int pipes[][2], int num_pipes, int current_pipe);
+
+
+
+
+// Прототипы вспомогательных функций
+char *get_env_value(const char *name, char **envp);
+char *replace_env_variable(const char *arg, char **envp);
+
+// Функция для получения значения переменной окружения
+char *get_env_value(const char *name, char **envp) {
+    size_t len = strlen(name);
+    for (int i = 0; envp[i] != NULL; i++) {
+        if (strncmp(envp[i], name, len) == 0 && envp[i][len] == '=') {
+            return strdup(envp[i] + len + 1); // Возвращает значение переменной окружения
+        }
+    }
+    return strdup(""); // Возвращает пустую строку, если переменная не найдена
 }
 
-void execute_external_command(t_command *command) {
-    pid_t pid;
-    int status;
+// Функция для замены переменных окружения в аргументе
+char *replace_env_variable(const char *arg, char **envp) {
+    char *result = malloc(strlen(arg) + 1);
+    if (!result) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+    strcpy(result, arg);
+    
+    char *start = strchr(result, '$');
+    while (start) {
+        char *end = start + 1;
+        while (*end && (isalnum(*end) || *end == '_')) {
+            end++;
+        }
+        size_t var_name_len = end - start - 1;
+        char var_name[var_name_len + 1];
+        strncpy(var_name, start + 1, var_name_len);
+        var_name[var_name_len] = '\0';
 
-    pid = fork();
-    if (pid == 0) {
-        // Дочерний процесс: попытка выполнить внешнюю команду
-        if (execve(command->path, command->cmd, command->envp) == -1) 
-		{
-            perror("minishell: execve error");
+        char *value = get_env_value(var_name, envp);
+        size_t new_len = strlen(result) - var_name_len + strlen(value);
+        char *new_result = malloc(new_len + 1);
+        if (!new_result) {
+            perror("malloc");
             exit(EXIT_FAILURE);
         }
-    } else if (pid < 0) {
-        perror("minishell: fork error");
+
+        strncpy(new_result, result, start - result);
+        strcpy(new_result + (start - result), value);
+        strcpy(new_result + (start - result) + strlen(value), end);
+
+        free(result);
+        result = new_result;
+        free(value);
+
+        start = strchr(result, '$');
+    }
+
+    return result;
+}
+
+// Функция для расширения переменных окружения в аргументах команды
+void expand_environment_variables(t_simple_cmds *cmd, char **envp) {
+    for (int i = 0; cmd->str[i] != NULL; i++) {
+        char *expanded_arg = replace_env_variable(cmd->str[i], envp);
+        free(cmd->str[i]);
+        cmd->str[i] = expanded_arg;
+    }
+}
+
+
+void prepare_executor(t_tools *tools) {
+    t_simple_cmds *cmd = tools->simple_cmds;
+    int num_pipes = tools->pipes;
+    int pipes[num_pipes][2];
+    int i = 0;
+
+    tools->pid = malloc(sizeof(int) * (num_pipes + 1));
+    if (!tools->pid) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+
+    create_pipes(pipes, num_pipes);
+
+    while (cmd) {
+        tools->pid[i] = fork();
+        if (tools->pid[i] == -1) {
+            perror("fork");
+            exit(EXIT_FAILURE);
+        }
+        if (tools->pid[i] == 0) { // Дочерний процесс
+            if (i > 0) {
+                dup_and_close(pipes[i - 1][0], STDIN_FILENO);
+            }
+            if (cmd->next) {
+                dup_and_close(pipes[i][1], STDOUT_FILENO);
+            }
+            close_pipes(pipes, num_pipes);
+            expand_environment_variables(cmd, tools->envp);
+            handle_redirections(cmd);
+            execute_command(cmd, tools);
+        }
+        cmd = cmd->next;
+        i++;
+    }
+
+    close_pipes(pipes, num_pipes);
+
+    for (i = 0; i <= num_pipes; i++) {
+        waitpid(tools->pid[i], NULL, 0);
+    }
+
+    free(tools->pid);
+}
+
+// Функция для создания пайпов
+void create_pipes(int pipes[][2], int num_pipes) {
+    for (int i = 0; i < num_pipes; i++) {
+        if (pipe(pipes[i]) == -1) {
+            perror("pipe");
+            exit(EXIT_FAILURE);
+        }
+    }
+}
+
+// Функция для закрытия всех пайпов
+void close_pipes(int pipes[][2], int num_pipes) {
+    for (int i = 0; i < num_pipes; i++) {
+        close(pipes[i][0]);
+        close(pipes[i][1]);
+    }
+}
+
+// Функция для дублирования и закрытия файловых дескрипторов
+void dup_and_close(int old_fd, int new_fd) {
+    if (dup2(old_fd, new_fd) == -1) {
+        perror("dup2");
+        exit(EXIT_FAILURE);
+    }
+    close(old_fd);
+}
+
+// Функция для обработки редиректов
+void handle_redirections(t_simple_cmds *cmd) {
+    t_lexer *redirection = cmd->redirections;
+    while (redirection) {
+        int fd;
+        if (redirection->token == GREAT) {
+            fd = open(redirection->str, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            if (fd == -1) {
+                perror("open");
+                exit(EXIT_FAILURE);
+            }
+            dup_and_close(fd, STDOUT_FILENO);
+        } else if (redirection->token == GREAT_GREAT) {
+            fd = open(redirection->str, O_WRONLY | O_CREAT | O_APPEND, 0644);
+            if (fd == -1) {
+                perror("open");
+                exit(EXIT_FAILURE);
+            }
+            dup_and_close(fd, STDOUT_FILENO);
+        } else if (redirection->token == LESS) {
+            fd = open(redirection->str, O_RDONLY);
+            if (fd == -1) {
+                perror("open");
+                exit(EXIT_FAILURE);
+            }
+            dup_and_close(fd, STDIN_FILENO);
+        } else if (redirection->token == LESS_LESS) {
+            create_heredoc(cmd);
+        }
+        redirection = redirection->next;
+    }
+}
+
+
+// Функция для генерации уникального имени файла
+char *generate_temp_filename() {
+    static int counter = 0;
+    char *filename = malloc(64);
+    if (!filename) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+    sprintf(filename, "/tmp/heredoc_temp_%d_%d", getpid(), counter++);
+    return filename;
+}
+
+// Функция для обработки heredoc
+void create_heredoc(t_simple_cmds *cmd) {
+    t_lexer *redir = cmd->redirections; // Указатель на список редиректов
+
+    while (redir) {
+        if (redir->token == LESS_LESS) {
+            char *temp_filename = generate_temp_filename(); // Генерация уникального имени файла
+            int temp_fd = open(temp_filename, O_WRONLY | O_CREAT | O_TRUNC, 0600); // Создание временного файла
+            if (temp_fd == -1) {
+                perror("open");
+                exit(EXIT_FAILURE);
+            }
+
+            char *delimiter = redir->str; // Строка-делимитер
+            char *line = NULL;
+            size_t len = 0;
+            ssize_t read_len;
+
+            printf("heredoc> ");
+            while ((read_len = getline(&line, &len, stdin)) != -1) {
+                if (strncmp(line, delimiter, strlen(delimiter)) == 0 && line[strlen(delimiter)] == '\n') {
+                    break; // Завершение ввода по делимитеру
+                }
+                write(temp_fd, line, read_len); // Запись строки в временный файл
+                printf("heredoc> ");
+            }
+
+            free(line);
+            close(temp_fd);
+
+            // Замена строки редиректа на временный файл
+            free(redir->str);
+            redir->str = temp_filename;
+        }
+        redir = redir->next; // Переход к следующему редиректу
+    }
+}
+
+// Функция для выполнения команды
+void execute_command(t_simple_cmds *cmd, t_tools *tools) {
+    if (cmd->builtin) {
+        cmd->builtin(tools, cmd);
+        exit(EXIT_SUCCESS);
     } else {
-        // Родительский процесс: ожидание завершения дочернего процесса
-        waitpid(pid, &status, 0);
-    }
-    if (WIFEXITED(status)) {
-        printf("Status %d, Process completed successfully\n", WEXITSTATUS(status));
+        execvp(cmd->str[0], cmd->str);
+        perror("execvp");
+        exit(EXIT_FAILURE);
     }
 }
 
 
-void execute_command(t_command *command) 
-{
-    if (command->cmd == NULL || command->cmd[0] == NULL) 
-	{
-        return;  // Пустая команда
-    }
-
-    if (!include_commands(command)) 
-	{
-        execute_external_command(command);  // Исполнение внешней команды
-    }
+// Функция executor для запуска команд
+int executor(t_tools *tools) {
+    g_global.in_cmd = 1; // Установка глобального флага выполнения команды
+    prepare_executor(tools); // Подготовка и выполнение команд
+    g_global.in_cmd = 0; // Сброс глобального флага выполнения команды
+    return 1; // Возвращение успешного выполнения
 }
-
-
-
-// void execute_command(t_command *command) 
-// {
-//     pid_t pid;
-//     int status;
-
-//     if (command->cmd == NULL) 
-// 	{
-// 		return;
-//     }
-
-//     if (strcmp(command->cmd, "cd") == 0)
-// 	{
-//         if (command->args[1] != NULL) 
-// 		{
-//             if (chdir(command->args[1]) != 0) 
-// 			{
-//                 perror("minishell: cd");
-//             }
-//         } 
-// 		else 
-// 		{
-//             fprintf(stderr, "minishell: cd: missing argument\n");
-//         }
-//     } 
-// 	else if (strcmp(command->cmd, "echo") == 0) 
-// 	{
-//         int i = 1;
-//         bool n_flag = false;
-//         if (command->args[i] && strcmp(command->args[i], "-n") == 0)
-// 		{
-//             n_flag = true;
-//             i++;
-//         }
-//         while (command->args[i]) 
-// 		{
-//             printf("%s", command->args[i]);
-//             if (command->args[i + 1]) 
-// 			{
-//                 printf(" ");
-//             }
-//             i++;
-//         }
-//         if (!n_flag) 
-// 		{
-//             printf("\n");
-//         }
-//     } 
-// 	else if (strcmp(command->cmd, "pwd") == 0) 
-// 	{
-//         char cwd[1024];
-//         if (getcwd(cwd, sizeof(cwd)) != NULL) 
-// 		{
-//             printf("%s\n", cwd);
-//         } 
-// 		else 
-// 		{
-//             perror("minishell: pwd");
-//         }
-//     } 
-// 	else if (ft_strcmp(command->cmd, "export") == 0 || ft_strcmp(command->cmd, "unset") == 0) 
-// 	{
-//         fprintf(stderr, "minishell: %s not fully implemented\n", command->cmd);
-//         // Дальнейшая реализация 'export' и 'unset'
-//     } 
-// 	else if (ft_strcmp(command->cmd, "env") == 0) 
-// 	{
-//         for (int i = 0; environ[i]; i++) 
-// 		{
-//             printf("%s\n", environ[i]);
-//         }
-//     }
-// 	else if (ft_strcmp(command->cmd, "exit") == 0)
-// 	{
-//         free_exit(command);
-// 		exit(0);
-//     }
-// 	else if (ft_strcmp(command->cmd, "history") == 0) 
-// 	{
-//         print_history();
-// 	}
-// 	else 
-// 	{
-//         // Для внешних команд используем fork и execvp
-//         pid = fork();
-//         if (pid == 0) {
-//             // Дочерний процесс: исполнение внешней команды
-//             if (execvp(command->cmd, command->args) == -1) 
-// 			{
-//                 perror("minishell");
-//                 exit(EXIT_FAILURE);
-//             }
-//         } 
-// 		else if (pid < 0) 
-// 		{
-//             perror("minishell: fork");
-//         } else 
-// 		{
-//             // Родительский процесс: ожидание завершения дочернего процесса
-//             waitpid(pid, &status, 0);
-//         }
-//     }
-// }

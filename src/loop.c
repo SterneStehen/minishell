@@ -6,25 +6,13 @@
 /*   By: smoreron <smoreron@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/28 16:43:01 by smoreron          #+#    #+#             */
-/*   Updated: 2024/05/30 20:56:36 by smoreron         ###   ########.fr       */
+/*   Updated: 2024/05/31 11:48:53 by smoreron         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../include/minishell.h" // Подключение заголовочного файла minishell.h
 
-// Прототипы вспомогательных функций
-int	renew(t_tools *tools);                               
-		// Прототип функции для сброса инструментов
-void	ft_error(const char *error_message, t_tools *tools);
-		// Прототип функции для обработки ошибок
-int	dubl_sign(const char *str);                       
-		// Прототип функции для подсчета парных кавычек
-int	token_reader(t_tools *tools);                        
-		// Прототип функции для лексического анализа строки
-void	parser(t_tools *tools);                             
-		// Прототип функции для синтаксического анализа строки
-void	prepare_executor(t_tools *tools);                   
-		// Прототип функции для подготовки и выполнения команд
+
 
 // Функция для обрезки пробелов с начала и конца строки
 char	*ft_cut(const char *s1, const char *set)
@@ -62,7 +50,7 @@ int	renew(t_tools *tools)
 }
 
 // Функция для обработки ошибок
-void	ft_error(const char *error_message, t_tools *tools)
+void	ft_error(char *error_message, t_tools *tools)
 {
 	ft_putendl_fd(error_message, STDERR_FILENO); // Вывод сообщения об ошибке
 	renew(tools);                                // Сброс инструментов
@@ -83,24 +71,6 @@ int	dubl_sign(const char *str)
 	}
 	return (sign % 2 == 0) && (sign2 % 2 == 0);
 		// Проверка на парность кавычек
-}
-
-// Функция для лексического анализа строки
-// int	token_reader(t_tools *tools)
-// {
-// 	return (1); // Предположим, что анализ прошел успешно
-// }
-
-// Функция для синтаксического анализа строки
-void	parser(t_tools *tools)
-{
-	// Логика для синтаксического анализа строки
-}
-
-// Функция для подготовки и выполнения команд
-void	prepare_executor(t_tools *tools)
-{
-	// Логика для подготовки и выполнения команд
 }
 
 // Основной цикл выполнения команд в minishell

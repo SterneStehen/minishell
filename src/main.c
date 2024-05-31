@@ -12,6 +12,8 @@
 
 #include "../include/minishell.h"
 
+t_global g_global;
+
 int main(int argc, char **argv, char **envp) {
     t_tools tools;
 
@@ -21,12 +23,15 @@ int main(int argc, char **argv, char **envp) {
     g_global.in_cmd = 0;
     g_global.in_heredoc = 0;
 
+    if (argc < 1)
+        return 0;
+    (void) *argv;
     // Инициализация структуры tools
     init_tools(&tools, envp);
     init_signal_handlers();
 
     // Основной цикл выполнения команд в minishell
-    minishell_loop(&tools);
+    loop(&tools);
 
     // Освобождение ресурсов перед выходом
     free(tools.pwd);

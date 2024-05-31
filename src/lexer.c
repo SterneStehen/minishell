@@ -6,7 +6,7 @@
 /*   By: smoreron <smoreron@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/28 18:23:50 by smoreron          #+#    #+#             */
-/*   Updated: 2024/05/30 21:21:13 by smoreron         ###   ########.fr       */
+/*   Updated: 2024/05/31 11:39:10 by smoreron         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -108,7 +108,7 @@ t_tokens	get_token(const char **str)
 		}
 		return (LESS); // Возвращение токена LESS
 	}
-	return (-1); // Неверный токен
+	return (INVALID); // Неверный токен
 }
 
 // Основная функция для чтения и анализа токенов в строке
@@ -125,7 +125,7 @@ int	token_reader(t_tools *tools)
 			break ; // Проверка на конец строки
 		// Обработка токенов
 		token = get_token(&str); // Получение токена из строки
-		if (token != -1)
+		if (token != INVALID)
 		{                             // Если найден токен
 			buffer[buf_index] = '\0'; // Завершение текущего слова в буфере
 			if (buf_index > 0)

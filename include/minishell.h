@@ -6,7 +6,7 @@
 /*   By: smoreron <smoreron@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/02/14 13:46:41 by mgraaf            #+#    #+#             */
-/*   Updated: 2024/05/30 21:01:21 by smoreron         ###   ########.fr       */
+/*   Updated: 2024/05/31 12:08:15 by smoreron         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,13 +14,7 @@
 # define MINISHELL_H
 
 # include "../include/libft/libft.h"
-// # include "builtins.h"
-// # include "color.h"
-// # include "error.h"
-// # include "executor.h"
-// # include "lexer.h"
-// # include "parser.h"
-// # include "utils.h"
+
 # include <errno.h>
 # include <fcntl.h>
 # include <readline/history.h>
@@ -32,6 +26,11 @@
 # include <string.h>
 # include <sys/stat.h>
 # include <unistd.h>
+# include <errno.h>
+# include <sys/stat.h>
+# include <signal.h>
+#include <sys/wait.h>
+
 
 // Определение токенов (ранее t_tokens)
 typedef enum s_tokens
@@ -41,6 +40,7 @@ typedef enum s_tokens
 	GREAT_GREAT, // Токен для добавления вывода (>>)
 	LESS,        // Токен для перенаправления ввода (<)
 	LESS_LESS,   // Токен для here-document (<<)
+	INVALID = -1
 }							t_tokens;
 
 // Структура для лексем (ранее t_lexer)
@@ -101,19 +101,15 @@ typedef struct s_global
 
 extern t_global g_global; // Объявление глобальной переменной состояния
 
-// my
-// void						init_tools(t_tools *tools, char
-// **envp);
+
 void						init_tools(t_tools *tools, char **envp);
-// char						**duplicate_array(char **arr);
-// void						free_array(char **array);
 void						free_PWD(t_tools *tools);
-// int							find_PWD(t_tools
-// *tools);
 char						**dupl_arr(char **arr);
 void						free_array(char **array);
 int							find_PWD(t_tools *tools);
-int							find_paths(t_tools *tools);
+int							find_paths(t_tools *tools); 
+void init_signal_handlers(void);
+int loop(t_tools *tools);
 
 // Прототипы функций
 int							parse_envp(t_tools *tools);
@@ -135,7 +131,7 @@ char						*delete_quotes_export(char *str, char c);
 int							question_mark(char **tmp);
 
 // Встроенные функции
-int (*builtin_arr(char *str))(t_tools *tools, t_simple_cmds *simple_cmd);
+int 						(*builtin_arr(char *str))(t_tools *tools, t_simple_cmds *simple_cmd);
 char						**dupl_arr(char **arr);
 void						free_array(char **array);
 int							find_PWD(t_tools *tools);
@@ -158,5 +154,19 @@ int							add_lexer(t_lexer **lexer_list, const char *str,
 								t_tokens token);
 void						next_space(const char **str);
 bool						is_space(char c);
+
+// Прототипы вспомогательных функций
+int	renew(t_tools *tools);                               
+		// Прототип функции для сброса инструментов
+void	ft_error(char *error_message, t_tools *tools);
+		// Прототип функции для обработки ошибок
+int	dubl_sign(const char *str);                       
+		// Прототип функции для подсчета парных кавычек
+int	token_reader(t_tools *tools);                        
+		// Прототип функции для лексического анализа строки
+void	parser(t_tools *tools);                             
+		// Прототип функции для синтаксического анализа строки
+void	prepare_executor(t_tools *tools);                   
+		// Прототип функции для подготовки и выполнения команд
 
 #endif
