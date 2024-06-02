@@ -6,7 +6,7 @@
 /*   By: smoreron <smoreron@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/02/14 13:46:41 by mgraaf            #+#    #+#             */
-/*   Updated: 2024/05/31 12:08:15 by smoreron         ###   ########.fr       */
+/*   Updated: 2024/06/02 20:54:46 by smoreron         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,20 +74,13 @@ typedef struct s_tools
 // Структура для простых команд (ранее t_simple_cmds)
 typedef struct s_simple_cmds
 {
-	char					**str;
-	// Массив строковых аргументов команды
-	int						(*builtin)(t_tools *, struct s_simple_cmds *);
-	// Указатель на функцию встроенной команды
-	int						num_redirections;
-	// Количество перенаправлений для команды
-	char					*hd_file_name;
-	// Имя файла для here-document
-	t_lexer					*redirections;
-	// Указатель на список перенаправлений
-	struct s_simple_cmds	*next;
-	// Указатель на следующую команду в списке
-	struct s_simple_cmds	*prev;
-	// Указатель на предыдущую команду в списке
+	char					**str; // Массив строковых аргументов команды
+	int						(*builtin)(t_tools *, struct s_simple_cmds *); // Указатель на функцию встроенной команды
+	int						num_redirections; // Количество перенаправлений для команды
+	char					*hd_file_name; // Имя файла для here-document
+	t_lexer					*redirections; // Указатель на список перенаправлений
+	struct s_simple_cmds	*next; // Указатель на следующую команду в списке
+	struct s_simple_cmds	*prev; // Указатель на предыдущую команду в списке
 }							t_simple_cmds;
 
 // Глобальная структура состояния (ранее t_global)
@@ -146,15 +139,16 @@ void						free_array(char **array);
 char						**dupl_arr(char **arr);
 
 // lexer
-int							token_reader(t_tools *tools);
-t_tokens					get_token(const char **str);
-void						handle_quotes(const char **str, char **result,
-								char quote_type);
-int							add_lexer(t_lexer **lexer_list, const char *str,
-								t_tokens token);
-void						next_space(const char **str);
-bool						is_space(char c);
-
+t_lexer *new_lex(char *str, t_tokens token);
+void add_back(t_lexer **lexer_list, t_lexer *node);
+char *get_substring(char const *s, unsigned int start, size_t len);
+int new_list(char *str, t_tokens token, t_lexer **lexer_list);
+int process_quotes(int i, char *str, char del);
+t_tokens audit_token(int c);
+int process_token(char *str, int i, t_lexer **lexer_list);
+int space(char c);
+int skip_whitespaces(char *str, int i);
+int words(int i, char *str, t_lexer **lexer_list);
 // Прототипы вспомогательных функций
 int	renew(t_tools *tools);                               
 		// Прототип функции для сброса инструментов
@@ -164,9 +158,11 @@ int	dubl_sign(const char *str);
 		// Прототип функции для подсчета парных кавычек
 int	token_reader(t_tools *tools);                        
 		// Прототип функции для лексического анализа строки
-void	parser(t_tools *tools);                             
+int 	parser(t_tools *tools);                             
 		// Прототип функции для синтаксического анализа строки
 void	prepare_executor(t_tools *tools);                   
 		// Прототип функции для подготовки и выполнения команд
+void create_heredoc(t_simple_cmds *cmd);
+void expand_environment_variables(t_simple_cmds *cmd, char **envp);
 
 #endif

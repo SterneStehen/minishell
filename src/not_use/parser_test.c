@@ -386,9 +386,9 @@ int main() {
         }
         if (cmd->redirections) {
             t_lexer *redir = cmd->redirections;
-            while (redir) {
-                printf("Редирекция: %s\n", redir->str);
-                redir = redir->next;
+            while (redir && redir->next) { // проверяем наличие следующего элемента
+                printf("Редирекция: %s %s\n", redir->str, redir->next->str);
+                redir = redir->next->next; // переход к следующей паре (оператор и файл)
             }
         }
         cmd = cmd->next;
@@ -428,9 +428,9 @@ int main() {
         }
         if (cmd->redirections) {
             t_lexer *redir = cmd->redirections;
-            while (redir) {
-                printf("Редирекция: %s\n", redir->str);
-                redir = redir->next;
+            while (redir && redir->next) { // проверяем наличие следующего элемента
+                printf("Редирекция: %s %s\n", redir->str, redir->next->str);
+                redir = redir->next->next;
             }
         }
         cmd = cmd->next;
@@ -468,59 +468,13 @@ int main() {
         }
         if (cmd->redirections) {
             t_lexer *redir = cmd->redirections;
-            while (redir) {
-                printf("Редирекция: %s\n", redir->str);
-                redir = redir->next;
+            while (redir && redir->next) { // проверяем наличие следующего элемента
+                printf("Редирекция: %s %s\n", redir->str, redir->next->str);
+                redir = redir->next->next;
             }
         }
         cmd = cmd->next;
     }
     free_cmd_list(tools.simple_cmds);
     free_lexer_list(lexer1);
-
-    // Тест 5: Команда с несколькими пайпами
-    lexer1 = new_lexer_node("cat", 0, 0);
-    lexer2 = new_lexer_node("file.txt", 0, 1);
-    lexer3 = new_lexer_node("|", PIPE, 2);
-    lexer4 = new_lexer_node("grep", 0, 3);
-    lexer5 = new_lexer_node("pattern", 0, 4);
-    t_lexer *lexer6 = new_lexer_node("|", PIPE, 5);
-    t_lexer *lexer7 = new_lexer_node("wc", 0, 6);
-    t_lexer *lexer8 = new_lexer_node("-l", 0, 7);
-
-    lexer1->next = lexer2;
-    lexer2->prev = lexer1; lexer2->next = lexer3;
-    lexer3->prev = lexer2; lexer3->next = lexer4;
-    lexer4->prev = lexer3; lexer4->next = lexer5;
-    lexer5->prev = lexer4; lexer5->next = lexer6;
-    lexer6->prev = lexer5; lexer6->next = lexer7;
-    lexer7->prev = lexer6; lexer7->next = lexer8;
-    lexer8->prev = lexer7;
-
-    tools.lexer_list = lexer1;
-    tools.simple_cmds = NULL;
-    tools.redirections = NULL;
-    tools.num_redirections = 0;
-    tools.pipes = 0;
-    tools.heredoc = false;
-    tools.reset = false;
-
-    printf("Тест 5: Команда с несколькими пайпами\n");
-    if (parser(&tools) == 0) {
-        printf("Парсер успешно завершил работу\n");
-    } else {
-        printf("Произошла ошибка при работе парсера\n");
-    }
-
-    cmd = tools.simple_cmds;
-    while (cmd) {
-        for (int i = 0; cmd->str && cmd->str[i]; i++) {
-            printf("Команда: %s\n", cmd->str[i]);
-        }
-        cmd = cmd->next;
-    }
-    free_cmd_list(tools.simple_cmds);
-    free_lexer_list(lexer1);
-
-    // Тест 
 }

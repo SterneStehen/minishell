@@ -14,37 +14,12 @@
 
 #include "../include/minishell.h"
 
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   executor.c                                         :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: smoreron <smoreron@student.42heilbronn.    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/05/31 11:04:54 by smoreron          #+#    #+#             */
-/*   Updated: 2024/05/31 11:05:15 by smoreron         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#include "../include/minishell.h"
 
 
-// Прототипы вспомогательных функций
-void execute_command(t_simple_cmds *cmd, t_tools *tools);
-void handle_redirections(t_simple_cmds *cmd);
-void close_pipes(int pipes[][2], int num_pipes);
-void dup_and_close(int old_fd, int new_fd);
-void expand_environment_variables(t_simple_cmds *cmd, char **envp);
+// Прототипы функций
 void create_heredoc(t_simple_cmds *cmd);
-void create_pipes(int pipes[][2], int num_pipes);
-void close_unused_pipes(int pipes[][2], int num_pipes, int current_pipe);
+void expand_environment_variables(t_simple_cmds *cmd, char **envp);
 
-
-
-
-// Прототипы вспомогательных функций
-char *get_env_value(const char *name, char **envp);
-char *replace_env_variable(const char *arg, char **envp);
 
 // Функция для получения значения переменной окружения
 char *get_env_value(const char *name, char **envp) {
@@ -59,13 +34,12 @@ char *get_env_value(const char *name, char **envp) {
 
 // Функция для замены переменных окружения в аргументе
 char *replace_env_variable(const char *arg, char **envp) {
-    char *result = malloc(strlen(arg) + 1);
+    char *result = strdup(arg);
     if (!result) {
-        perror("malloc");
+        perror("strdup");
         exit(EXIT_FAILURE);
     }
-    strcpy(result, arg);
-    
+
     char *start = strchr(result, '$');
     while (start) {
         char *end = start + 1;
@@ -109,62 +83,6 @@ void expand_environment_variables(t_simple_cmds *cmd, char **envp) {
 }
 
 
-void prepare_executor(t_tools *tools) {
-    t_simple_cmds *cmd = tools->simple_cmds;
-    int num_pipes = tools->pipes;
-    int pipes[num_pipes][2];
-    int i = 0;
-
-    tools->pid = malloc(sizeof(int) * (num_pipes + 1));
-    if (!tools->pid) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
-
-    create_pipes(pipes, num_pipes);
-
-    while (cmd) {
-        tools->pid[i] = fork();
-        if (tools->pid[i] == -1) {
-            perror("fork");
-            exit(EXIT_FAILURE);
-        }
-        if (tools->pid[i] == 0) { // Дочерний процесс
-            if (i > 0) {
-                dup_and_close(pipes[i - 1][0], STDIN_FILENO);
-            }
-            if (cmd->next) {
-                dup_and_close(pipes[i][1], STDOUT_FILENO);
-            }
-            close_pipes(pipes, num_pipes);
-            expand_environment_variables(cmd, tools->envp);
-            handle_redirections(cmd);
-            execute_command(cmd, tools);
-        }
-        cmd = cmd->next;
-        i++;
-    }
-
-    close_pipes(pipes, num_pipes);
-
-    for (i = 0; i <= num_pipes; i++) {
-        waitpid(tools->pid[i], NULL, 0);
-    }
-
-    free(tools->pid);
-}
-
-// Функция для создания пайпов
-void create_pipes(int pipes[][2], int num_pipes) {
-    for (int i = 0; i < num_pipes; i++) {
-        if (pipe(pipes[i]) == -1) {
-            perror("pipe");
-            exit(EXIT_FAILURE);
-        }
-    }
-}
-
-// Функция для закрытия всех пайпов
 void close_pipes(int pipes[][2], int num_pipes) {
     for (int i = 0; i < num_pipes; i++) {
         close(pipes[i][0]);
@@ -172,7 +90,6 @@ void close_pipes(int pipes[][2], int num_pipes) {
     }
 }
 
-// Функция для дублирования и закрытия файловых дескрипторов
 void dup_and_close(int old_fd, int new_fd) {
     if (dup2(old_fd, new_fd) == -1) {
         perror("dup2");
@@ -181,39 +98,56 @@ void dup_and_close(int old_fd, int new_fd) {
     close(old_fd);
 }
 
-// Функция для обработки редиректов
 void handle_redirections(t_simple_cmds *cmd) {
     t_lexer *redirection = cmd->redirections;
     while (redirection) {
-        int fd;
+        int fd = -1;
         if (redirection->token == GREAT) {
             fd = open(redirection->str, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-            if (fd == -1) {
-                perror("open");
-                exit(EXIT_FAILURE);
-            }
-            dup_and_close(fd, STDOUT_FILENO);
         } else if (redirection->token == GREAT_GREAT) {
             fd = open(redirection->str, O_WRONLY | O_CREAT | O_APPEND, 0644);
-            if (fd == -1) {
-                perror("open");
-                exit(EXIT_FAILURE);
-            }
-            dup_and_close(fd, STDOUT_FILENO);
         } else if (redirection->token == LESS) {
             fd = open(redirection->str, O_RDONLY);
-            if (fd == -1) {
-                perror("open");
-                exit(EXIT_FAILURE);
-            }
-            dup_and_close(fd, STDIN_FILENO);
         } else if (redirection->token == LESS_LESS) {
             create_heredoc(cmd);
+            fd = open(redirection->str, O_RDONLY);
         }
+
+        if (fd == -1) {
+            perror("open");
+            exit(EXIT_FAILURE);
+        }
+
+        if (redirection->token == GREAT || redirection->token == GREAT_GREAT) {
+            dup_and_close(fd, STDOUT_FILENO);
+        } else if (redirection->token == LESS || redirection->token == LESS_LESS) {
+            dup_and_close(fd, STDIN_FILENO);
+        }
+
         redirection = redirection->next;
     }
 }
 
+void execute_command(t_simple_cmds *cmd, t_tools *tools) {
+    if (cmd->builtin) {
+        cmd->builtin(tools, cmd);
+        exit(EXIT_SUCCESS);
+    } else {
+        printf("Executing command: %s\n", cmd->str[0]); // Отладочная информация
+        execvp(cmd->str[0], cmd->str);
+        perror("execvp");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void create_pipes(int pipes[][2], int num_pipes) {
+    for (int i = 0; i < num_pipes; i++) {
+        if (pipe(pipes[i]) == -1) {
+            perror("pipe");
+            exit(EXIT_FAILURE);
+        }
+    }
+}
 
 // Функция для генерации уникального имени файла
 char *generate_temp_filename() {
@@ -264,24 +198,47 @@ void create_heredoc(t_simple_cmds *cmd) {
         redir = redir->next; // Переход к следующему редиректу
     }
 }
+void prepare_executor(t_tools *tools) {
+    t_simple_cmds *cmd = tools->simple_cmds;
+    int num_pipes = tools->pipes;
+    int pipes[num_pipes][2];
+    int i = 0;
 
-// Функция для выполнения команды
-void execute_command(t_simple_cmds *cmd, t_tools *tools) {
-    if (cmd->builtin) {
-        cmd->builtin(tools, cmd);
-        exit(EXIT_SUCCESS);
-    } else {
-        execvp(cmd->str[0], cmd->str);
-        perror("execvp");
+    tools->pid = malloc(sizeof(int) * (num_pipes + 1));
+    if (!tools->pid) {
+        perror("malloc");
         exit(EXIT_FAILURE);
     }
-}
 
+    create_pipes(pipes, num_pipes);
 
-// Функция executor для запуска команд
-int executor(t_tools *tools) {
-    g_global.in_cmd = 1; // Установка глобального флага выполнения команды
-    prepare_executor(tools); // Подготовка и выполнение команд
-    g_global.in_cmd = 0; // Сброс глобального флага выполнения команды
-    return 1; // Возвращение успешного выполнения
+    while (cmd) {
+        tools->pid[i] = fork();
+        if (tools->pid[i] == -1) {
+            perror("fork");
+            exit(EXIT_FAILURE);
+        }
+        if (tools->pid[i] == 0) { // Дочерний процесс
+            if (i > 0) {
+                dup_and_close(pipes[i - 1][0], STDIN_FILENO);
+            }
+            if (cmd->next) {
+                dup_and_close(pipes[i][1], STDOUT_FILENO);
+            }
+            close_pipes(pipes, num_pipes);
+            expand_environment_variables(cmd, tools->envp); // Расширение переменных окружения
+            handle_redirections(cmd);
+            execute_command(cmd, tools);
+        }
+        cmd = cmd->next;
+        i++;
+    }
+
+    close_pipes(pipes, num_pipes);
+
+    for (i = 0; i <= num_pipes; i++) {
+        waitpid(tools->pid[i], NULL, 0);
+    }
+
+    free(tools->pid);
 }

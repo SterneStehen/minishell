@@ -1,4 +1,4 @@
-# Имя исполняемого файла
+
 NAME = minishell
 
 # Компилятор и флаги компиляции
@@ -34,7 +34,7 @@ all: $(NAME)
 
 # Сборка исполняемого файла
 $(NAME): $(OBJ) $(LIBFT)
-	$(CC) $(CFLAGS) $(OBJ) -L$(LIBFTDIR) -lft -lreadline -o $(BUILDDIR)/$(NAME)
+	$(CC) $(CFLAGS) $(OBJ) -L$(LIBFTDIR) -lft -lreadline -o $(NAME)
 
 # Сборка объектных файлов
 $(BUILDDIR)/%.o: $(SRCDIR)/%.c | $(BUILDDIR)
@@ -54,7 +54,7 @@ clean:
 	make -C $(LIBFTDIR) clean
 
 fclean: clean
-	rm -f $(BUILDDIR)/$(NAME)
+	rm -f $(NAME)
 	make -C $(LIBFTDIR) fclean
 
 # Пересборка
