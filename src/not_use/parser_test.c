@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,66 +9,60 @@
 // Определение токенов (ранее t_tokens)
 typedef enum s_tokens
 {
-	PIPE = 1,    // Токен для канала (|)
-	GREAT,       // Токен для перенаправления вывода (>)
-	GREAT_GREAT, // Токен для добавления вывода (>>)
-	LESS,        // Токен для перенаправления ввода (<)
-	LESS_LESS,   // Токен для here-document (<<)
-	INVALID = -1
-}							t_tokens;
+    PIPE = 1,    // Токен для канала (|)
+    GREAT,       // Токен для перенаправления вывода (>)
+    GREAT_GREAT, // Токен для добавления вывода (>>)
+    LESS,        // Токен для перенаправления ввода (<)
+    LESS_LESS,   // Токен для here-document (<<)
+    INVALID = -1
+} t_tokens;
 
 // Структура для лексем (ранее t_lexer)
 typedef struct s_lexer
 {
-	char *str;            // Строка, представляющая лексему
-	t_tokens token;       // Тип токена
-	int i;                // Индекс в исходной строке
-	struct s_lexer *next; // Указатель на следующую лексему в списке
-	struct s_lexer *prev; // Указатель на предыдущую лексему в списке
-}							t_lexer;
+    char *str;            // Строка, представляющая лексему
+    t_tokens token;       // Тип токена
+    int i;                // Индекс в исходной строке
+    struct s_lexer *next; // Указатель на следующую лексему в списке
+    struct s_lexer *prev; // Указатель на предыдущую лексему в списке
+} t_lexer;
 
 // Объединенная структура инструментов (ранее t_tools и t_parser_tools)
 typedef struct s_tools
 {
-	char *args;                        // Аргументы командной строки
-	char **paths;                      // Массив путей к исполняемым файлам
-	char **envp;                       // Массив переменных окружения
-	struct s_simple_cmds *simple_cmds; // Указатель на список простых команд
-	t_lexer *lexer_list;               // Указатель на список лексем
-	t_lexer					*redirections;  // Указатель на список лексем для перенаправлений
-	int num_redirections; // Количество перенаправлений
-	char *pwd;            // Текущая рабочая директория
-	char *old_pwd;        // Предыдущая рабочая директория
-	int						pipes; // Количество конвейеров (pipe) в текущей команде
-	int *pid;     // Массив идентификаторов процессов
-	bool heredoc; // Флаг наличия here-document
-	bool reset;   // Флаг необходимости сброса состояния
-}							t_tools;
+    char *args;                        // Аргументы командной строки
+    char **paths;                      // Массив путей к исполняемым файлам
+    char **envp;                       // Массив переменных окружения
+    struct s_simple_cmds *simple_cmds; // Указатель на список простых команд
+    t_lexer *lexer_list;               // Указатель на список лексем
+    t_lexer *redirections;             // Указатель на список лексем для перенаправлений
+    int num_redirections;              // Количество перенаправлений
+    char *pwd;                         // Текущая рабочая директория
+    char *old_pwd;                     // Предыдущая рабочая директория
+    int pipes;                         // Количество конвейеров (pipe) в текущей команде
+    int *pid;                          // Массив идентификаторов процессов
+    bool heredoc;                      // Флаг наличия here-document
+    bool reset;                        // Флаг необходимости сброса состояния
+} t_tools;
 
 // Структура для простых команд (ранее t_simple_cmds)
 typedef struct s_simple_cmds
 {
-	char					**str; // Массив строковых аргументов команды
-	int						(*builtin)(t_tools *, struct s_simple_cmds *); // Указатель на функцию встроенной команды
-	int						num_redirections; // Количество перенаправлений для команды
-	char					*hd_file_name; // Имя файла для here-document
-	t_lexer					*redirections; // Указатель на список перенаправлений
-	struct s_simple_cmds	*next; // Указатель на следующую команду в списке
-	struct s_simple_cmds	*prev; // Указатель на предыдущую команду в списке
-}							t_simple_cmds;
-
-
-
-
-
-
+    char **str; // Массив строковых аргументов команды
+    int (*builtin)(t_tools *, struct s_simple_cmds *); // Указатель на функцию встроенной команды
+    int num_redirections; // Количество перенаправлений для команды
+    char *hd_file_name;   // Имя файла для here-document
+    t_lexer *redirections; // Указатель на список перенаправлений
+    struct s_simple_cmds *next; // Указатель на следующую команду в списке
+    struct s_simple_cmds *prev; // Указатель на предыдущую команду в списке
+} t_simple_cmds;
 
 // Прототипы функций
 int count_special_symbols(t_lexer *lexer_list);
 int count_arguments(t_lexer *lexer_list);
-t_lexer* find_next_command(t_lexer *lexer_list);
-char* join_strings(t_lexer *lexer_list, int count);
-void add_redirection(t_tools *tools, t_lexer *lexer);
+t_lexer *find_next_command(t_lexer *lexer_list);
+char *join_strings(t_lexer *lexer_list, int count);
+void add_redirection(t_tools *tools, t_lexer *lexer, t_simple_cmds *cmd);
 void remove_redirections(t_tools *tools);
 void initialize_command(t_tools *tools, t_lexer **lexer_list);
 void handle_error(const char *error_message);
@@ -87,7 +82,7 @@ int parser(t_tools *tools) {
             current = current->next;
             continue;
         }
-        
+
         initialize_command(tools, &current);
         current = find_next_command(current);
     }
@@ -118,7 +113,7 @@ int count_arguments(t_lexer *lexer_list) {
 }
 
 // Поиск следующей команды
-t_lexer* find_next_command(t_lexer *lexer_list) {
+t_lexer *find_next_command(t_lexer *lexer_list) {
     while (lexer_list && lexer_list->token != PIPE) {
         lexer_list = lexer_list->next;
     }
@@ -129,7 +124,7 @@ t_lexer* find_next_command(t_lexer *lexer_list) {
 }
 
 // Объединение строк с пробелами
-char* join_strings(t_lexer *lexer_list, int count) {
+char *join_strings(t_lexer *lexer_list, int count) {
     int length = 0;
     t_lexer *current = lexer_list;
 
@@ -158,17 +153,17 @@ char* join_strings(t_lexer *lexer_list, int count) {
 }
 
 // Добавление редирекций в список
-void add_redirection(t_tools *tools, t_lexer *lexer) {
+void add_redirection(t_tools *tools, t_lexer *lexer, t_simple_cmds *cmd) {
     t_lexer *redirection_node = new_lexer_node(lexer->str, lexer->token, lexer->i);
     if (!redirection_node) {
         handle_error("Failed to allocate memory for redirection");
         return;
     }
 
-    if (tools->redirections == NULL) {
-        tools->redirections = redirection_node;
+    if (cmd->redirections == NULL) {
+        cmd->redirections = redirection_node;
     } else {
-        t_lexer *current = tools->redirections;
+        t_lexer *current = cmd->redirections;
         while (current->next) {
             current = current->next;
         }
@@ -176,7 +171,7 @@ void add_redirection(t_tools *tools, t_lexer *lexer) {
         redirection_node->prev = current;
     }
 
-    tools->num_redirections++;
+    cmd->num_redirections++;
     if (lexer->token == LESS_LESS) {
         tools->heredoc = true;
     }
@@ -207,7 +202,6 @@ void remove_redirections(t_tools *tools) {
     }
 }
 
-// Инициализация команды
 void initialize_command(t_tools *tools, t_lexer **lexer_list) {
     t_simple_cmds *cmd = new_cmd_node();
     if (!cmd) {
@@ -242,7 +236,7 @@ void initialize_command(t_tools *tools, t_lexer **lexer_list) {
 
     // Обработка редирекций для команды
     while (*lexer_list && (*lexer_list)->token >= GREAT) {
-        add_redirection(tools, *lexer_list);
+        add_redirection(tools, *lexer_list, cmd);
         *lexer_list = (*lexer_list)->next;
     }
 }
@@ -285,7 +279,6 @@ t_simple_cmds *new_cmd_node(void) {
     return cmd;
 }
 
-// Освобождение списка лексем
 void free_lexer_list(t_lexer *lexer_list) {
     t_lexer *temp;
     while (lexer_list) {
@@ -301,7 +294,7 @@ void free_lexer_list(t_lexer *lexer_list) {
 void free_cmd_list(t_simple_cmds *cmd_list) {
     t_simple_cmds *temp;
     int i;
-        while (cmd_list) {
+    while (cmd_list) {
         temp = cmd_list;
         cmd_list = cmd_list->next;
         if (temp->str) {
@@ -516,7 +509,18 @@ int main() {
     if (parser(&tools) == 0) {
         printf("Парсер успешно завершил работу\n");
     } else {
-        printf("Произошла ошибка при работе");
-        }
-}
+        printf("Произошла ошибка при работе парсера\n");
+    }
 
+    cmd = tools.simple_cmds;
+    while (cmd) {
+        for (int i = 0; cmd->str && cmd->str[i]; i++) {
+            printf("Команда: %s\n", cmd->str[i]);
+        }
+        cmd = cmd->next;
+    }
+    free_cmd_list(tools.simple_cmds);
+    free_lexer_list(lexer1);
+
+    // Тест 
+}
