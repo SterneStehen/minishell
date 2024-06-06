@@ -16,7 +16,7 @@
 
 
 
-// Прототипы функций
+// Прототипы функций fffff
 void create_heredoc(t_simple_cmds *cmd);
 void expand_environment_variables(t_simple_cmds *cmd, char **envp);
 
