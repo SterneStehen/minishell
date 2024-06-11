@@ -6,7 +6,7 @@
 /*   By: smoreron <smoreron@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/10/27 01:25:02 by smoreron          #+#    #+#             */
-/*   Updated: 2024/05/28 16:56:48 by smoreron         ###   ########.fr       */
+/*   Updated: 2024/06/05 09:37:12 by smoreron         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -49,7 +49,7 @@ char				*ft_strdup(const char *s);
 char				*ft_strchr(const char *s, int c);
 char				*ft_strnstr(const char *haystack, const char *needle,
 						size_t len);
-char				*ft_strrchr(const char *s, int c);
+char				*ft_strchr(const char *s, int c);
 char				*ft_strjoin(char const *s1, char const *s2);
 char				*ft_cut(char const *s1, char const *set);
 char				**ft_split(char const *s, char c);

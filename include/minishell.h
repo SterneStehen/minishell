@@ -6,7 +6,7 @@
 /*   By: smoreron <smoreron@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/02/14 13:46:41 by mgraaf            #+#    #+#             */
-/*   Updated: 2024/06/02 20:54:46 by smoreron         ###   ########.fr       */
+/*   Updated: 2024/06/11 12:44:34 by smoreron         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -65,7 +65,7 @@ typedef struct s_tools
 	int num_redirections; // Количество перенаправлений
 	char *pwd;            // Текущая рабочая директория
 	char *old_pwd;        // Предыдущая рабочая директория
-	int						pipes; // Количество конвейеров (pipe) в текущей команде
+	int	pipes; // Количество конвейеров (pipe) в текущей команде
 	int *pid;     // Массив идентификаторов процессов
 	bool heredoc; // Флаг наличия here-document
 	bool reset;   // Флаг необходимости сброса состояния
@@ -139,16 +139,7 @@ void						free_array(char **array);
 char						**dupl_arr(char **arr);
 
 // lexer
-t_lexer *new_lex(char *str, t_tokens token);
-void add_back(t_lexer **lexer_list, t_lexer *node);
-char *get_substring(char const *s, unsigned int start, size_t len);
-int new_list(char *str, t_tokens token, t_lexer **lexer_list);
-int process_quotes(int i, char *str, char del);
-t_tokens audit_token(int c);
-int process_token(char *str, int i, t_lexer **lexer_list);
-int space(char c);
-int skip_whitespaces(char *str, int i);
-int words(int i, char *str, t_lexer **lexer_list);
+
 // Прототипы вспомогательных функций
 int	renew(t_tools *tools);                               
 		// Прототип функции для сброса инструментов

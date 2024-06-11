@@ -1,24 +1,66 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   lexer.c                                            :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: smoreron <smoreron@student.42heilbronn.    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/05/28 18:23:50 by smoreron          #+#    #+#             */
-/*   Updated: 2024/06/11 12:45:25 by smoreron         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "../include/libft/libft.h"
-#include "../include/minishell.h"
+// // Определение типов токенов
+// typedef enum e_tokens
+// {
+//     PIPE,
+//     GREAT,
+//     LESS,
+//     GREAT_GREAT,
+//     LESS_LESS
+// } t_tokens;
+
+// // Структура для представления токенов
+// typedef struct s_lexer
+// {
+//     char            *str;
+//     t_tokens        token;
+//     int             i;
+//     struct s_lexer  *next;
+//     struct s_lexer  *prev;
+// } t_lexer;
+
+// // Структура для инструментов
+// typedef struct s_tools
+// {
+//     char        *args;
+//     t_lexer     *lexer_list;
+// } t_tools;
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef enum {
+    PIPE,
+    GREAT,
+    LESS,
+    GREAT_GREAT,
+    LESS_LESS
+} t_tokens;
+
+typedef struct s_lexer {
+    char *str;
+    t_tokens token;
+    int index;
+    struct s_lexer *next;
+    struct s_lexer *prev;
+} t_lexer;
+
+typedef struct {
+    char *args;
+    t_lexer *lexer_list;
+} t_tools;
+
 
 
 
 t_lexer *create_lexer_node(char *str, t_tokens token);
 void append_lexer_node(t_lexer **lexer_list, t_lexer *node);
 char *extract_substring(const char *s, unsigned int start, size_t len);
-int process_quotes_dub(const char *str, int start, char quote_char);
+int process_quotes(const char *str, int start, char quote_char);
 t_tokens identify_token(int c);
 int handle_token(const char *str, int i, t_lexer **lexer_list);
 int is_whitespace(char c);
@@ -57,7 +99,7 @@ t_lexer *create_lexer_node(char *str, t_tokens token)
         return NULL;
     new_node->str = str ? strdup(str) : NULL;
     new_node->token = token;
-    new_node->i = 0;
+    new_node->index = 0;
     new_node->next = NULL;
     new_node->prev = NULL;
     return new_node;
@@ -91,7 +133,7 @@ char *extract_substring(const char *s, unsigned int first, size_t len)
     return sub;
 }
 
-int process_quotes_dub(const char *str, int start, char quote_char)
+int process_quotes(const char *str, int start, char quote_char)
 {
     int offset = 0;
     if (str[start + offset] == quote_char) {
@@ -152,8 +194,8 @@ int handle_words(int i, const char *str, t_lexer **lexer_list)
 {
     int offset = 0;
     while (str[i + offset] && !identify_token(str[i + offset])) {
-        offset += process_quotes_dub(str, i + offset, 34); // double quotes
-        offset += process_quotes_dub(str, i + offset, 39); // single quotes
+        offset += process_quotes(str, i + offset, 34); // double quotes
+        offset += process_quotes(str, i + offset, 39); // single quotes
         if (is_whitespace(str[i + offset]))
             break;
         offset++;
@@ -178,4 +220,48 @@ int token_reader(t_tools *tools)
         i += offset;
     }
     return 1;
+}
+
+void print_lexer_list(t_lexer *lexer_list)
+{
+    t_lexer *temp = lexer_list;
+    while (temp) {
+        printf("Token: %d, String: %s\n", temp->token, temp->str);
+        temp = temp->next;
+    }
+}
+
+
+
+// Main-функция для тестирования
+int main(void)
+{
+    t_tools tools;
+    tools.args = strdup("echo \"Hello, World!\" \"hello\" | grep Hello > output.txt");
+    tools.lexer_list = NULL;
+
+    printf("Input: %s\n", tools.args);
+    if (token_reader(&tools))
+    {
+        printf("Lexer list:\n");
+        print_lexer_list(tools.lexer_list);
+    }
+    else
+    {
+        printf("Error in token_reader\n");
+    }
+
+    // Free lexer list
+    t_lexer *temp;
+    while (tools.lexer_list)
+    {
+        temp = tools.lexer_list;
+        tools.lexer_list = tools.lexer_list->next;
+        free(temp->str);
+        free(temp);
+    }
+
+    free(tools.args);
+
+    return 0;
 }
