@@ -67,7 +67,7 @@ int is_whitespace(char c);
 int skip_spaces(const char *str, int i);
 int add_lexer_node(char *str, t_tokens token, t_lexer **lexer_list);
 int handle_words(int i, const char *str, t_lexer **lexer_list);
-int token_reader(t_tools *tools);
+int parse_tokens(t_tools *tools);
 void print_lexer_list(t_lexer *lexer_list);
 
 
@@ -205,7 +205,7 @@ int handle_words(int i, const char *str, t_lexer **lexer_list)
     return offset;
 }
 
-int token_reader(t_tools *tools)
+int parse_tokens(t_tools *tools)
 {
     int i = 0;
     while (tools->args[i]) {
@@ -232,35 +232,68 @@ void print_lexer_list(t_lexer *lexer_list)
 }
 
 
-
-// Main-функция для тестирования
-int main(void)
-{
+int main() {
     t_tools tools;
-    tools.args = strdup("echo \"Hello, World!\" \"hello\" | grep Hello > output.txt");
+
+    // Первый тест
+    tools.args = strdup("echo \"Hello, World!\" \"hello\" | grep Hello >> output.txt");
     tools.lexer_list = NULL;
 
-    printf("Input: %s\n", tools.args);
-    if (token_reader(&tools))
-    {
-        printf("Lexer list:\n");
+    printf("Test 1:\n");
+    if (!parse_tokens(&tools)) {
+        fprintf(stderr, "Error parsing tokens in test 1\n");
+    } else {
         print_lexer_list(tools.lexer_list);
     }
-    else
-    {
-        printf("Error in token_reader\n");
-    }
 
-    // Free lexer list
+    // Освобождение памяти после первого теста
     t_lexer *temp;
-    while (tools.lexer_list)
-    {
+    while (tools.lexer_list) {
         temp = tools.lexer_list;
         tools.lexer_list = tools.lexer_list->next;
         free(temp->str);
         free(temp);
     }
+    free(tools.args);
 
+    // Второй тест
+    tools.args = strdup("ls -la | grep txt < files.txt");
+    tools.lexer_list = NULL;
+
+    printf("\nTest 2:\n");
+    if (!parse_tokens(&tools)) {
+        fprintf(stderr, "Error parsing tokens in test 2\n");
+    } else {
+        print_lexer_list(tools.lexer_list);
+    }
+
+    // Освобождение памяти после второго теста
+    while (tools.lexer_list) {
+        temp = tools.lexer_list;
+        tools.lexer_list = tools.lexer_list->next;
+        free(temp->str);
+        free(temp);
+    }
+    free(tools.args);
+
+    // Третий тест
+    tools.args = strdup("cat file1.txt file2.txt | sort | uniq > sorted.txt");
+    tools.lexer_list = NULL;
+
+    printf("\nTest 3:\n");
+    if (!parse_tokens(&tools)) {
+        fprintf(stderr, "Error parsing tokens in test 3\n");
+    } else {
+        print_lexer_list(tools.lexer_list);
+    }
+
+    // Освобождение памяти после третьего теста
+    while (tools.lexer_list) {
+        temp = tools.lexer_list;
+        tools.lexer_list = tools.lexer_list->next;
+        free(temp->str);
+        free(temp);
+    }
     free(tools.args);
 
     return 0;
