@@ -1,9 +1,8 @@
-
 NAME = minishell
 
 # Компилятор и флаги компиляции
 CC = gcc
-CFLAGS = -Wall -Wextra -Werror
+CFLAGS = -Wall  -Wextra -Werror
 
 # Директории
 SRCDIR = src
@@ -11,14 +10,8 @@ INCDIR = include
 LIBFTDIR = $(INCDIR)/libft
 BUILDDIR = build
 
-# Файлы исходного кода
-SRC = $(SRCDIR)/executor.c \
-      $(SRCDIR)/init.c \
-      $(SRCDIR)/lexer.c \
-      $(SRCDIR)/loop.c \
-      $(SRCDIR)/main.c \
-      $(SRCDIR)/parser.c \
-      $(SRCDIR)/signal.c
+# Поиск всех файлов .c в директории src и её подпапках
+SRC = $(shell find $(SRCDIR) -type f -name "*.c")
 
 # Объектные файлы
 OBJ = $(SRC:$(SRCDIR)/%.c=$(BUILDDIR)/%.o)
@@ -37,12 +30,9 @@ $(NAME): $(OBJ) $(LIBFT)
 	$(CC) $(CFLAGS) $(OBJ) -L$(LIBFTDIR) -lft -lreadline -o $(NAME)
 
 # Сборка объектных файлов
-$(BUILDDIR)/%.o: $(SRCDIR)/%.c | $(BUILDDIR)
+$(BUILDDIR)/%.o: $(SRCDIR)/%.c
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
-
-# Создание директории для сборки
-$(BUILDDIR):
-	mkdir -p $(BUILDDIR)
 
 # Сборка библиотеки libft
 $(LIBFT):
